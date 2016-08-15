@@ -9,13 +9,14 @@
         <init-param>
             <!--<param-name>com.sun.jersey.spi.container.ContainerRequestFilters</param-name>-->
             <param-name>com.sun.jersey.spi.container.ContainerResponseFilters</param-name>
-            <param-value>com.TDI.Filter.ResponseCorsFilter</param-value>
+            <param-value>com.TDI.Filter.CORSFilter</param-value>
 
         </init-param>
         <init-param>
             <param-name>jersey.config.server.provider.packages</param-name>
             <param-value>
                 io.swagger.jaxrs.listing,
+                com.TDI.Filter,
                 com.TDI.Services
             </param-value>
         </init-param>
@@ -36,8 +37,8 @@
         <init-param>
             <param-name>swagger.api.basepath</param-name>
 
-            <param-value>https://complaintbox-server.herokuapp.com/api</param-value>
-           <!-- <param-value>http://localhost:5000/api</param-value>-->
+           <!-- <param-value>https://complaintbox-server.herokuapp.com/api</param-value>-->
+           <param-value>http://localhost:5000/api</param-value>
         </init-param>
         <load-on-startup>2</load-on-startup>
     </servlet>
