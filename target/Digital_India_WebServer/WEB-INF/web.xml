@@ -36,8 +36,8 @@
         <init-param>
             <param-name>swagger.api.basepath</param-name>
 
-            <!--<param-value>https://prms-jaxrestserver.herokuapp.com/api</param-value>-->
-            <param-value>http://localhost:5000/api</param-value>
+            <param-value>https://complaintbox-server.herokuapp.com/api</param-value>
+           <!-- <param-value>http://localhost:5000/api</param-value>-->
         </init-param>
         <load-on-startup>2</load-on-startup>
     </servlet>
