@@ -1,13 +1,18 @@
 package com.TDI.Services.SMS;
 
+import com.mongodb.Block;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.result.UpdateResult;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.bson.Document;
 import org.json.JSONObject;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -21,6 +26,13 @@ import java.util.Random;
 @Api(value = "SMS")
 @Path("/SMS/")
 public class SMS {
+
+    MongoClientURI connectionString = new MongoClientURI("mongodb://voodoo:722446@ds161495.mlab.com:61495/complaint_box");
+
+    MongoClient mongoClient = new MongoClient(connectionString);
+    MongoDatabase db = mongoClient.getDatabase(connectionString.getDatabase());
+    MongoCollection<Document> collection = db.getCollection("OTP");
+
     JSONObject obj = new JSONObject();
 
 
@@ -34,11 +46,14 @@ public class SMS {
         return x;
     }
 
-    @GET
-    @Path("/sms_test")
+    boolean datafound=false;
+
+
+    @POST
+    @Path("/request_OTP")
     @Produces("application/json")
-    @ApiOperation(value = "(Dont call this api. Just test here). The \"To\" field needs to be with country code for eg. +919999999999")
-    public String sms_test(@QueryParam("to") String to) {
+    @ApiOperation(value = "(Mobile number needs to be with country code for eg. +919999999999")
+    public String request_OTP(@FormParam("mob_no") String mob_no) {
         /*TwilioRestClient client = new TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN);
         obj = new JSONObject();
         try {
@@ -63,7 +78,9 @@ public class SMS {
         try {
 
             String OTP=String.valueOf(gen());
-            String url = "http://smshorizon.co.in/api/sendsms.php?user=sachinnair29&apikey=gRJwMKM8NmlqtUh267sS&mobile="+to+"&senderid=xxyy&message=Your%20ComplaintBox%20Registration%20OTP%20is%20"+OTP+".&type=txt";
+            String url = "http://smshorizon.co.in/api/sendsms.php?user=sachinnair29&apikey=gRJwMKM8NmlqtUh267sS&mobile="+mob_no+"&senderid=xxyy&message=Your%20ComplaintBox%20Registration%20OTP%20is%20"+OTP+".&type=txt";
+
+            String User_Id="User_"+String.valueOf(gen());
 
             URL obj1 = new URL(url);
             System.out.print("url is "+obj1);
@@ -93,23 +110,85 @@ public class SMS {
             if(responseCode==200)
             {
 
-                obj.put("response","success");
-                return String.valueOf(obj);
-            }
-            //print result
+                datafound=false;
+                FindIterable<Document> iterable = collection.find(new org.bson.Document("mob_no", mob_no));
+                iterable.forEach(new Block<Document>() {
+                    @Override
+                    public void apply(final org.bson.Document document) {
+                        datafound=true;
+                    }
 
+                });
+
+                if(datafound==true)
+                {
+                    UpdateResult ur = collection.updateOne(new org.bson.Document("mob_no", mob_no), new org.bson.Document("$set", new org.bson.Document("verification_OTP", OTP)));
+                    if (ur.getModifiedCount() != 0) {
+                        obj.put("response","success");
+                        return String.valueOf(obj);
+                    }
+
+                    obj.put("response","failure");
+                    return String.valueOf(obj);
+                }else
+                {
+                    org.bson.Document doc1 = new org.bson.Document("mob_no", mob_no)
+                            .append("verification_OTP", OTP);
+                    collection.insertOne(doc1);
+                    obj.put("response","success");
+                    return String.valueOf(obj);
+                }
+            }
         }catch (Exception e)
         {
             e.printStackTrace();
         }
 
-
-
-
-
-
         obj.put("response","failure");
         return String.valueOf(obj);
     }
+
+
+    String OTP;
+    @GET
+    @Path("/verify_OTP")
+    @Produces("application/json")
+    @ApiOperation(value = "(It checks if the OTP is valid or not")
+    public String verify_OTP(@QueryParam("mob_no") String mob_no,@QueryParam("verification_OTP") String verification_OTP) {
+        datafound=false;
+
+        try {
+            datafound=false;
+            OTP=null;
+
+            FindIterable<org.bson.Document> iterable = collection.find(new org.bson.Document("mob_no", mob_no));
+            iterable.forEach(new Block<org.bson.Document>() {
+                @Override
+                public void apply(final org.bson.Document document) {
+                    datafound=true;
+                    OTP = String.valueOf(document.get("verification_OTP"));
+
+                }
+
+            });
+            if(datafound==true && OTP.equals(verification_OTP)){
+                obj.put("response","valid");
+                return String.valueOf(obj);
+            }
+            else
+            {
+                obj.put("response","invalid");
+                return String.valueOf(obj);
+            }
+        }catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+        obj.put("response","invalid");
+        return String.valueOf(obj);
+
+    }
+
+
 
 }
