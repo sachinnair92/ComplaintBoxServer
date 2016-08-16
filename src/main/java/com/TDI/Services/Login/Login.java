@@ -4,12 +4,15 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.net.URL;
 import java.util.Random;
+
+import com.TDI.Services.SMS.SMS;
 import com.mongodb.Block;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.util.JSON;
 import com.twilio.sdk.TwilioRestClient;
 import com.twilio.sdk.TwilioRestException;
 import io.swagger.annotations.Api;
@@ -69,7 +72,6 @@ public class Login {
             is_valid=0;
             pwd=null;
             tou=null;
-
             FindIterable<org.bson.Document> iterable = collection.find(new org.bson.Document("user_name", user_name));
             iterable.forEach(new Block<org.bson.Document>() {
                 @Override
@@ -103,16 +105,32 @@ public class Login {
 
 
 
-
+  Boolean datafound=false;
+    String OTP;
 
     @POST
     @Path("/register_user")
     @Produces("application/json")
     public String register_user(@FormParam("name") String name,@FormParam("dob") String dob,@FormParam("user_name") String user_name,
-                                @FormParam("password") String password,@FormParam("email")String email,@FormParam("address")String address,@FormParam("m_no")String m_no,@FormParam("l_no")String l_no) {
+                                @FormParam("password") String password,@FormParam("email")String email,@FormParam("address")String address,@FormParam("m_no")String m_no,@FormParam("l_no")String l_no,@FormParam("request_id")String request_id,@FormParam("verification_OTP") String verification_OTP) {
+
+
+
+        datafound=false;
         obj = new JSONObject();
 
         try {
+           SMS sms_obj=new SMS();
+           obj= new JSONObject(sms_obj.verify_OTP(m_no,request_id,verification_OTP));
+
+            if(obj.get("response").equals("invalid"))
+            {
+                obj = new JSONObject();
+                obj.put("status", "invalid");
+                return String.valueOf(obj);
+            }
+
+            obj = new JSONObject();
             is_valid=0;
             FindIterable<org.bson.Document> iterable = collection.find(new org.bson.Document("user_name", user_name));
             iterable.forEach(new Block<org.bson.Document>() {
@@ -148,6 +166,9 @@ public class Login {
 
 
             collection.insertOne(doc);
+
+            sms_obj.delete_OTP(m_no, request_id, verification_OTP);
+
             obj.put("status", "true");
             return String.valueOf(obj);
 
@@ -156,9 +177,40 @@ public class Login {
         {
             e.printStackTrace();
         }
-        return "null";
+        obj.put("status", "false");
+        return String.valueOf(obj);
     }
 
 
+    @GET
+    @Path("/username_availability_check")
+    @Produces("application/json")
+    public String username_availability_check(@QueryParam("user_name") String user_name) {
+        obj = new JSONObject();
+        System.out.println("checking " + user_name);
+        try {
+            is_valid=0;
+            FindIterable<org.bson.Document> iterable = collection.find(new org.bson.Document("user_name", user_name));
+            iterable.forEach(new Block<org.bson.Document>() {
+                @Override
+                public void apply(final org.bson.Document document) {
+                    is_valid=1;
+                }
+
+            });
+            if(is_valid==1)
+            {
+                obj.put("response", "false");
+                return String.valueOf(obj);
+            }
+            obj.put("response", "true");
+            return String.valueOf(obj);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        obj.put("response", "false");
+        return String.valueOf(obj);
+    }
 
 }
+

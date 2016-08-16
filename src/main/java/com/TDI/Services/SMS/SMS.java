@@ -6,6 +6,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -46,6 +47,16 @@ public class SMS {
         return x;
     }
 
+    public int gen1() {
+        Random r = new Random( System.currentTimeMillis() );
+        int x=300000+r.nextInt(3000000)+ r.nextInt(8000000)+r.nextInt(5000000);
+        while(x>999999)
+        {
+            x=x/10;
+        }
+        return x;
+    }
+
     boolean datafound=false;
 
 
@@ -78,11 +89,16 @@ public class SMS {
         try {
 
             String OTP=String.valueOf(gen());
+
+            String r_id="Request_"+String.valueOf(gen1());
+
             String url = "http://smshorizon.co.in/api/sendsms.php?user=sachinnair29&apikey=gRJwMKM8NmlqtUh267sS&mobile="+mob_no+"&senderid=xxyy&message=Your%20ComplaintBox%20Registration%20OTP%20is%20"+OTP+".&type=txt";
 
             String User_Id="User_"+String.valueOf(gen());
 
-            URL obj1 = new URL(url);
+            System.out.println("\n Generated OTP is " + OTP);
+
+           /* URL obj1 = new URL(url);
             System.out.print("url is "+obj1);
             HttpURLConnection con = (HttpURLConnection) obj1.openConnection();
 
@@ -106,7 +122,10 @@ public class SMS {
                 response.append(inputLine);
             }
             in.close();
-            System.out.println("\n response is      : "+response.toString());
+            System.out.println("\n response is      : "+response.toString());*/
+
+            int responseCode =200;
+
             if(responseCode==200)
             {
 
@@ -122,9 +141,10 @@ public class SMS {
 
                 if(datafound==true)
                 {
-                    UpdateResult ur = collection.updateOne(new org.bson.Document("mob_no", mob_no), new org.bson.Document("$set", new org.bson.Document("verification_OTP", OTP)));
+                    UpdateResult ur = collection.updateOne(new org.bson.Document("mob_no", mob_no), new org.bson.Document("$set", new org.bson.Document("verification_OTP", OTP).append("request_id",r_id)));
                     if (ur.getModifiedCount() != 0) {
                         obj.put("response","success");
+                        obj.put("request_id",r_id);
                         return String.valueOf(obj);
                     }
 
@@ -133,9 +153,10 @@ public class SMS {
                 }else
                 {
                     org.bson.Document doc1 = new org.bson.Document("mob_no", mob_no)
-                            .append("verification_OTP", OTP);
+                            .append("verification_OTP", OTP).append("request_id",r_id);
                     collection.insertOne(doc1);
                     obj.put("response","success");
+                    obj.put("request_id",r_id);
                     return String.valueOf(obj);
                 }
             }
@@ -153,15 +174,15 @@ public class SMS {
     @GET
     @Path("/verify_OTP")
     @Produces("application/json")
-    @ApiOperation(value = "(It checks if the OTP is valid or not")
-    public String verify_OTP(@QueryParam("mob_no") String mob_no,@QueryParam("verification_OTP") String verification_OTP) {
+    @ApiOperation(value = "(Dont!! call this method..its called internally")
+    public String verify_OTP(@QueryParam("mob_no") String mob_no,@QueryParam("request_id") String request_id,@QueryParam("verification_OTP") String verification_OTP) {
         datafound=false;
 
         try {
             datafound=false;
             OTP=null;
-
-            FindIterable<org.bson.Document> iterable = collection.find(new org.bson.Document("mob_no", mob_no));
+            System.out.println("matching "+mob_no+" "+request_id+" "+OTP);
+            FindIterable<org.bson.Document> iterable = collection.find(new org.bson.Document("mob_no", mob_no).append("request_id",request_id));
             iterable.forEach(new Block<org.bson.Document>() {
                 @Override
                 public void apply(final org.bson.Document document) {
@@ -172,11 +193,13 @@ public class SMS {
 
             });
             if(datafound==true && OTP.equals(verification_OTP)){
+                System.out.println("Verification Success");
                 obj.put("response","valid");
                 return String.valueOf(obj);
             }
             else
             {
+                System.out.println("Verification failed");
                 obj.put("response","invalid");
                 return String.valueOf(obj);
             }
@@ -184,7 +207,39 @@ public class SMS {
         {
             e.printStackTrace();
         }
+        System.out.println("Verification failed11");
         obj.put("response","invalid");
+        return String.valueOf(obj);
+
+    }
+
+
+    @GET
+    @Path("/delete_OTP")
+    @Produces("application/json")
+    @ApiOperation(value = "(Dont!! call this method..its called internally")
+    public String delete_OTP(@QueryParam("mob_no") String mob_no,@QueryParam("request_id") String request_id,@QueryParam("verification_OTP") String verification_OTP) {
+        datafound=false;
+
+        try {
+            datafound=false;
+            OTP=null;
+
+            DeleteResult dr = collection.deleteMany(new org.bson.Document("mob_no", mob_no).append("request_id", request_id));
+            if (dr.getDeletedCount() != 0) {
+                obj.put("response","true");
+                return String.valueOf(obj);
+            }
+            else
+            {
+                obj.put("response","false");
+                return String.valueOf(obj);
+            }
+        }catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+        obj.put("response", "false");
         return String.valueOf(obj);
 
     }
