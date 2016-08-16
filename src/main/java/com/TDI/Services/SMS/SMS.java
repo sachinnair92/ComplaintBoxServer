@@ -98,7 +98,7 @@ public class SMS {
 
             System.out.println("\n Generated OTP is " + OTP);
 
-           /* URL obj1 = new URL(url);
+            URL obj1 = new URL(url);
             System.out.print("url is "+obj1);
             HttpURLConnection con = (HttpURLConnection) obj1.openConnection();
 
@@ -122,9 +122,9 @@ public class SMS {
                 response.append(inputLine);
             }
             in.close();
-            System.out.println("\n response is      : "+response.toString());*/
+            System.out.println("\n response is      : "+response.toString());
 
-            int responseCode =200;
+            //int responseCode =200;
 
             if(responseCode==200)
             {
